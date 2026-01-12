@@ -1,0 +1,41 @@
+[package]
+name = "web5-indexer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde_json = { version = "1" }
+serde = { version = "1", features = ["derive"] }
+reqwest = { version = "0.12", features = ["json"] }
+async-trait = "0.1"
+jsonrpc-core = "18.0"
+tokio = { version = "1", features = [
+    "time",
+    "macros",
+    "net",
+    "rt-multi-thread",
+    "sync",
+    "io-util",
+    "io-std",
+] }
+log = "0.4"
+arc-swap = "1"
+faster-hex = "0.10.0"
+env_logger = "0.11"
+serde_ipld_dagcbor = "0.6"
+molecule = "0.9"
+data-encoding = "2.0"
+
+sqlx = { version = "0.8", features = [
+    "runtime-tokio",
+    "postgres",
+    "chrono",
+    "macros",
+    "derive",
+] }
+chrono = { version = "0.4", features = ["serde"] }
+salvo = { version = "0.88", features = ["cors"] }
+
+ckb-jsonrpc-types = "1"
+ckb-types = "1"
+ckb-sdk = "5"

@@ -20,7 +20,7 @@ pub struct Pagination<T> {
     pub last_cursor: JsonBytes,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
 pub enum CellType {
     Input,

@@ -6,7 +6,9 @@ mod pg_write;
 mod rpc_client;
 mod types;
 
-pub use http_server::{did_from_addr, did_from_id};
+pub use http_server::{
+    did_from_addr, did_from_handle, did_from_id, did_from_lock_script_hash, did_from_signing_key,
+};
 pub use monitor::did_monitor;
 pub use rpc_client::{CKB_MAINNET_RPC, CKB_TESTNET_RPC, Network, RpcClient, did_script};
 pub use types::*;

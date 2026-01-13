@@ -26,7 +26,8 @@ pub(crate) struct DidWrite {
     block_number: String,
     outpoint: String,
     did_document: Json<Web5DocumentData>,
-    valid: bool,
+    cell_data: String,
+    lock_script_hash: String,
     created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -40,6 +41,8 @@ impl DidWrite {
         block_number: String,
         outpoint: String,
         did_document: Json<Web5DocumentData>,
+        cell_data: String,
+        lock_script_hash: String,
         created_at: chrono::DateTime<chrono::Utc>,
     ) -> Self {
         Self {
@@ -51,7 +54,8 @@ impl DidWrite {
             block_number,
             outpoint,
             did_document,
-            valid: true,
+            cell_data,
+            lock_script_hash,
             created_at,
         }
     }
@@ -65,7 +69,7 @@ impl DidWrite {
             return Ok(());
         }
         let sql = format!(
-            "INSERT INTO {} (did, handle, signing_key, ckb_address, tx_hash, block_number, outpoint, did_document, valid, created_at) ",
+            "INSERT INTO {} (did, handle, signing_key, ckb_address, tx_hash, block_number, outpoint, did_document, cell_data, lock_script_hash, created_at) ",
             net.did()
         );
 
@@ -79,10 +83,11 @@ impl DidWrite {
                 .push_bind(&did_write.block_number)
                 .push_bind(&did_write.outpoint)
                 .push_bind(&did_write.did_document)
-                .push_bind(&did_write.valid)
+                .push_bind(&did_write.cell_data)
+                .push_bind(&did_write.lock_script_hash)
                 .push_bind(&did_write.created_at);
         });
-        query_builder.push(" ON CONFLICT (did) DO NOTHING");
+
         query_builder.build().execute(conn).await?;
         Ok(())
     }
@@ -90,11 +95,21 @@ impl DidWrite {
 
 pub(crate) struct DidDelete {
     outpoint: String,
+    consumed_tx: String,
+    consumed_at: chrono::DateTime<chrono::Utc>,
 }
 
 impl DidDelete {
-    pub fn new(outpoint: String) -> Self {
-        Self { outpoint }
+    pub fn new(
+        outpoint: String,
+        consumed_tx: String,
+        consumed_at: chrono::DateTime<chrono::Utc>,
+    ) -> Self {
+        Self {
+            outpoint,
+            consumed_tx,
+            consumed_at,
+        }
     }
 
     pub async fn delete_batch(
@@ -106,11 +121,19 @@ impl DidDelete {
             return Ok(());
         }
         let sql = format!(
-            "UPDATE {} SET valid = false WHERE outpoint = ANY($1)",
+            "UPDATE {} SET valid = false, consumed_tx= $2, consumed_at = $3 WHERE outpoint = $1",
             net.did()
         );
-        let outpoints: Vec<&str> = deletes.iter().map(|d| d.outpoint.as_str()).collect();
-        sqlx::query(&sql).bind(&outpoints).execute(conn).await?;
+
+        for delete in deletes {
+            sqlx::query(&sql)
+                .bind(&delete.outpoint)
+                .bind(&delete.consumed_tx)
+                .bind(&delete.consumed_at)
+                .execute(&mut *conn)
+                .await?;
+        }
+
         Ok(())
     }
 }

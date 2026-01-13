@@ -36,7 +36,10 @@ async fn http_server() {
     use salvo::{
         Listener, Router, Server, Service, conn::TcpListener, cors::AllowOrigin, cors::Cors,
     };
-    use web5_indexer::{did_from_addr, did_from_id};
+    use web5_indexer::{
+        did_from_addr, did_from_handle, did_from_id, did_from_lock_script_hash,
+        did_from_signing_key,
+    };
 
     use salvo::http::Method;
     let cors = Cors::new()
@@ -47,7 +50,10 @@ async fn http_server() {
 
     let router = Router::new()
         .push(Router::with_path("did_from_id").get(did_from_id))
-        .push(Router::with_path("did_from_address").get(did_from_addr));
+        .push(Router::with_path("did_from_address").get(did_from_addr))
+        .push(Router::with_path("did_from_signing_key").get(did_from_signing_key))
+        .push(Router::with_path("did_from_handle").get(did_from_handle))
+        .push(Router::with_path("did_from_lock_script_hash").get(did_from_lock_script_hash));
 
     let service = Service::new(router).hoop(cors);
     let http_port = std::env::var("HTTP_PORT").unwrap_or("8000".to_string());

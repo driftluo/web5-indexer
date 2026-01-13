@@ -5,6 +5,7 @@ use crate::{
 };
 
 use chrono::DateTime;
+use ckb_sdk::util::blake160;
 use ckb_types::{packed, prelude::Entity};
 
 use std::sync::Arc;
@@ -111,7 +112,9 @@ pub async fn did_monitor(rpc: &RpcClient) {
                                 .unwrap()
                                 .lock
                                 .clone();
-                            let ckb_addr = calculate_address(&lock.into(), net.into());
+                            let packed_lock: packed::Script = lock.into();
+                            let ckb_addr = calculate_address(&packed_lock, net.into());
+                            let lock_script_hash = blake160(&packed_lock.as_bytes());
                             let cell_data = tx_all
                                 .inner
                                 .outputs_data
@@ -121,7 +124,8 @@ pub async fn did_monitor(rpc: &RpcClient) {
                                 Some(didoc) => didoc,
                                 None => {
                                     log::warn!(
-                                        "Failed to parse DIDoc cell data at tx: {}, index: {}",
+                                        "{:?} Failed to parse DIDoc cell data at tx: {}, index: {}",
+                                        net,
                                         tx.tx_hash,
                                         index.value()
                                     );
@@ -133,7 +137,8 @@ pub async fn did_monitor(rpc: &RpcClient) {
                                 Some(handle) => handle,
                                 None => {
                                     log::warn!(
-                                        "DIDoc check failed at tx: {}, index: {}",
+                                        "{:?} DIDoc check failed at tx: {}, index: {}",
+                                        net,
                                         tx.tx_hash,
                                         index.value()
                                     );
@@ -149,6 +154,14 @@ pub async fn did_monitor(rpc: &RpcClient) {
                                 .as_ref()
                                 .unwrap();
                             let web5_did = calculate_web5_did(&type_script.args.as_bytes()[..20]);
+                            let cell_data = {
+                                let data = tx_all
+                                    .inner
+                                    .outputs_data
+                                    .get(index.value() as usize)
+                                    .unwrap();
+                                faster_hex::hex_string(data.as_bytes())
+                            };
 
                             // insert to db
                             dids.push(crate::pg_write::DidWrite::new(
@@ -160,6 +173,8 @@ pub async fn did_monitor(rpc: &RpcClient) {
                                 faster_hex::hex_string(&tx.block_number.value().to_be_bytes()),
                                 faster_hex::hex_string(&out_point.as_bytes()),
                                 sqlx::types::Json(didoc),
+                                cell_data,
+                                faster_hex::hex_string(&lock_script_hash.as_bytes()),
                                 DateTime::from_timestamp_millis(
                                     header.inner.timestamp.value() as i64
                                 )
@@ -178,6 +193,11 @@ pub async fn did_monitor(rpc: &RpcClient) {
                             // change state to invalid
                             did_deletes.push(crate::pg_write::DidDelete::new(
                                 faster_hex::hex_string(&out_point.as_bytes()),
+                                faster_hex::hex_string(tx.tx_hash.as_bytes()),
+                                DateTime::from_timestamp_millis(
+                                    header.inner.timestamp.value() as i64
+                                )
+                                .unwrap(),
                             ));
                         }
                     }
